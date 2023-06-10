@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Data siswa Taman Kanak-Kanak</title>
+		<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.min.css" />
+		<link rel="stylesheet" type="text/css" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" />
+	</head>
+	<body>
+		<button id="tambahBtn">Tambah siswa</button>
+
+		<table id="siswaTable">
+			<thead>
+				<tr>
+					<th>ID</th>
+					<th>Nisn</th>
+					<th>Nama</th>
+					<th>Kelas</th>
+					<th>Action</th>
+				</tr>
+			</thead>
+			<tbody></tbody>
+		</table>
+
+		<div id="formContainer" style="display: none">
+			<h3>Tambah siswa</h3>
+			<form id="siswaForm">
+				<input type="hidden" id="siswaId" name="id" />
+				<label for="Nisn">Nisn:</label>
+				<input type="text" id="nisn" name="nisn" required />
+				<label for="nama">Nama:</label>
+				<input type="text" id="nama" name="nama" required />
+				<label for="kelas">kelas:</label>
+				<input type="text" id="kelas" name="kelas" required />
+				<button type="submit">Simpan</button>
+				<button type="button" id="cancelBtn">Batal</button>
+			</form>
+		</div>
+
+		<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+		<script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
+		<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+		<script>
+			$(document).ready(function () {
+				var dataTable = $('#siswaTable').DataTable({
+					columns: [
+						{ data: 'id' },
+						{ data: 'nisn' },
+						{ data: 'nama' },
+						{ data: 'kelas' },
+						{
+							data: null,
+							render: function (data, type, row) {
+								return '<button class="editBtn" data-id="' + data.id + '">Edit</button>' + '<button class="deleteBtn" data-id="' + data.id + '">Hapus</button>';
+							},
+						},
+					],
+				});
+
+				function loadsiswaData() {
+					$.ajax({
+						url: 'http://localhost:3000/siswa',
+						method: 'GET',
+						dataType: 'json',
+						success: function (response) {
+							dataTable.clear().rows.add(response).draw();
+						},
+					});
+				}
+
+				loadsiswaData();
+
+				$('#tambahBtn')
+					.button()
+					.click(function () {
+						$('#siswaForm')[0].reset();
+						$('#siswaId').val('');
+						$('#formContainer').show();
+					});
+
+				$('#siswaForm').submit(function (e) {
+					e.preventDefault();
+					var siswaId = $('#siswaId').val();
+					var siswaData = {
+						nisn: $('#nisn').val(),
+						nama: $('#nama').val(),
+						kelas: $('#kelas').val(),
+					};
+
+					var apiUrl = siswaId ? 'http://localhost:3000/siswa/' + siswaId : 'http://localhost:3000/siswa';
+
+					$.ajax({
+						url: apiUrl,
+						method: siswaId ? 'PUT' : 'POST',
+						dataType: 'json',
+						contentType: 'application/json',
+						data: JSON.stringify(siswaData),
+						success: function (response) {
+							if (siswaId) {
+								var index = dataTable.row($('button.editBtn[data-id="' + siswaId + '"]').parents('tr')).index();
+								dataTable.row(index).data(response).draw();
+							} else {
+								dataTable.row.add(response).draw();
+							}
+							$('#formContainer').hide();
+						},
+					});
+				});
+
+				$(document).on('click', '.editBtn', function () {
+					var siswaId = $(this).data('id');
+					var apiUrl = 'http://localhost:3000/siswa/' + siswaId;
+
+					$.ajax({
+						url: apiUrl,
+						method: 'GET',
+						dataType: 'json',
+						success: function (response) {
+							$('#siswaId').val(response.id);
+							$('#nisn').val(response.nisn);
+							$('#nama').val(response.nama);
+							$('#kelas').val(response.kelas);
+							$('#formContainer').show();
+						},
+					});
+				});
+
+				$(document).on('click', '.deleteBtn', function () {
+					var siswaId = $(this).data('id');
+					var apiUrl = 'http://localhost:3000/siswa/' + siswaId;
+
+					if (confirm('Apakah Anda yakin ingin menghapus siswa ini?')) {
+						$.ajax({
+							url: apiUrl,
+							method: 'DELETE',
+							success: function (response) {
+								var index = dataTable.row($('button.deleteBtn[data-id="' + siswaId + '"]').parents('tr')).index();
+								dataTable.row(index).remove().draw();
+							},
+						});
+					}
+				});
+
+				$('#cancelBtn')
+					.button()
+					.click(function () {
+						$('#siswaForm')[0].reset();
+						$('#siswaId').val('');
+						$('#formContainer').hide();
+					});
+			});
+		</script>
+	</body>
+</html>
